@@ -23,7 +23,7 @@ api_version = "2025-07"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_orders, write_orders, read_products, write_products, read_inventory, write_inventory"
+scopes = "read_orders, write_orders, read_products, write_products, read_inventory, write_inventory, read_locations"
 
 [auth]
 redirect_urls = ["https://ikrinka-inv.onrender.com/auth/callback", "https://ikrinka-inv.onrender.com/auth/shopify/callback", "https://ikrinka-inv.onrender.com/api/auth/callback"]

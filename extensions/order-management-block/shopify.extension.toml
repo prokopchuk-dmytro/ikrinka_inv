@@ -13,7 +13,7 @@ module = "./src/BlockExtension.tsx"
 target = "admin.order-details.block.render"
 
 [access_scopes]
-scopes = ["read_orders", "write_orders", "read_products", "write_products", "read_inventory", "write_inventory"]
+scopes = ["read_orders", "write_orders", "read_products", "write_products", "read_inventory", "write_inventory", "read_locations"]
 
 
 # Valid extension targets:
