@@ -1,0 +1,32 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "64d2867e3f148ecf4828e99e6c07b0a7"
+name = "order-management"
+handle = "order-management-48"
+application_url = "https://ours-schemes-zealand-baker.trycloudflare.com"
+embedded = true
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = true
+
+[webhooks]
+api_version = "2025-07"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_orders, write_orders, read_products, write_products, read_inventory, write_inventory"
+
+[auth]
+redirect_urls = ["https://ours-schemes-zealand-baker.trycloudflare.com/auth/callback", "https://ours-schemes-zealand-baker.trycloudflare.com/auth/shopify/callback", "https://ours-schemes-zealand-baker.trycloudflare.com/api/auth/callback"]
+
+[pos]
+embedded = false
