@@ -22,7 +22,6 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Якщо дані ще не готові — показуємо лоадер
   if (!data?.order) {
     return (
       <AdminBlock title="Керування складом">
@@ -31,7 +30,6 @@ function App() {
     );
   }
 
-  // Отримуємо ID замовлення з контексту
   const orderId = data.order.id;
 
   useEffect(() => {
@@ -42,15 +40,11 @@ function App() {
           return;
         }
 
-        // 1) Отримуємо локацію (беремо першу доступну)
         const locationsRes = await query<any>(`{
-          locations(first: 1) {
-            edges { node { id } }
-          }
+          locations(first: 1) { edges { node { id } } }
         }`);
         const locationId = locationsRes?.data?.locations?.edges?.[0]?.node?.id;
 
-        // 2) Отримуємо залишки для варіантів замовлення
         const productVariantIds = data.order.lineItems.map((item: any) => item.variant.id);
         const res = await query<any>(`
           query GetInventoryLevels($variantIds: [ID!]!, $locationId: ID) {
@@ -75,9 +69,7 @@ function App() {
             .map((n: any) => ({
               id: n.id,
               displayName: n.displayName,
-              inventoryItem: {
-                id: n.inventoryItem?.id,
-              },
+              inventoryItem: { id: n.inventoryItem?.id },
               inventoryQuantity: n.inventoryItem?.inventoryLevels?.edges?.[0]?.node?.available ?? undefined,
             }));
           setProducts(normalized);
@@ -97,12 +89,9 @@ function App() {
     setErrorMessage(null);
 
     try {
-      // 1. Додаємо тег до замовлення
       const addTagsRes = await query(`
         mutation addTags($id: ID!, $tags: [String!]!) {
-          tagsAdd(id: $id, tags: $tags) {
-            userErrors { field message }
-          }
+          tagsAdd(id: $id, tags: $tags) { userErrors { field message } }
         }
       `, { variables: { id: orderId, tags: ['Списано зі складу'] } });
 
@@ -112,15 +101,11 @@ function App() {
         return;
       }
 
-      // 2. Списуємо товари зі складу
       const inventoryAdjustments = data.order.lineItems
         .map((item: any) => {
           const variant = products.find((p: any) => p.id === item.variant.id);
           if (!variant?.inventoryItem?.id) return null;
-          return {
-            inventoryItemId: variant.inventoryItem.id,
-            availableDelta: -item.quantity,
-          };
+          return { inventoryItemId: variant.inventoryItem.id, availableDelta: -item.quantity };
         })
         .filter(Boolean);
 
@@ -129,7 +114,6 @@ function App() {
         return;
       }
 
-      // Локація
       const locationsRes = await query<any>(`{ locations(first: 1) { edges { node { id } } } }`);
       const locationId = locationsRes?.data?.locations?.edges?.[0]?.node?.id;
       if (!locationId) {
@@ -140,18 +124,9 @@ function App() {
 
       const adjustRes = await query(`
         mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
-          inventoryAdjustQuantities(input: $input) {
-            userErrors { field message }
-          }
+          inventoryAdjustQuantities(input: $input) { userErrors { field message } }
         }
-      `, { variables: {
-          input: {
-            reason: 'fulfillment',
-            name: 'web',
-            changes: inventoryAdjustments,
-            locationId,
-          }
-      }});
+      `, { variables: { input: { reason: 'fulfillment', name: 'web', changes: inventoryAdjustments, locationId } } });
 
       if (adjustRes?.data?.inventoryAdjustQuantities?.userErrors?.length) {
         setErrorMessage('Не вдалося списати товари зі складу.');
@@ -160,7 +135,6 @@ function App() {
       }
 
       setIsProcessing(false);
-      // Оновлюємо сторінку для відображення змін
       // eslint-disable-next-line no-restricted-globals
       location.reload();
     } catch (e: any) {
@@ -180,12 +154,12 @@ function App() {
   return (
     <AdminBlock title="Керування складом">
       <BlockStack>
-        {errorMessage && <Text appearance="critical">{errorMessage}</Text>}
-        <Text emphasis="bold">Залишки товарів на складі:</Text>
+        {errorMessage ? <Text>{errorMessage}</Text> : null}
+        <Text>Залишки товарів на складі:</Text>
         {products.map((product: any) => (
-          <InlineStack key={product.id} blockAlign="center">
+          <InlineStack key={product.id}>
             <Text>{product.displayName} - </Text>
-            <Text emphasis="bold">{product.inventoryQuantity ?? '—'} шт.</Text>
+            <Text>{product.inventoryQuantity ?? '—'} шт.</Text>
           </InlineStack>
         ))}
 
