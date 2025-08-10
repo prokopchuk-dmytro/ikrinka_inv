@@ -3,7 +3,7 @@
 client_id = "64d2867e3f148ecf4828e99e6c07b0a7"
 name = "order-management"
 handle = "order-management-48"
-application_url = "https://ours-schemes-zealand-baker.trycloudflare.com"
+application_url = "https://ikrinka-inv.onrender.com"
 embedded = true
 
 [build]
@@ -26,7 +26,7 @@ api_version = "2025-07"
 scopes = "read_orders, write_orders, read_products, write_products, read_inventory, write_inventory"
 
 [auth]
-redirect_urls = ["https://ours-schemes-zealand-baker.trycloudflare.com/auth/callback", "https://ours-schemes-zealand-baker.trycloudflare.com/auth/shopify/callback", "https://ours-schemes-zealand-baker.trycloudflare.com/api/auth/callback"]
+redirect_urls = ["https://ikrinka-inv.onrender.com/auth/callback", "https://ikrinka-inv.onrender.com/auth/shopify/callback", "https://ikrinka-inv.onrender.com/api/auth/callback"]
 
 [pos]
 embedded = false
