@@ -6,8 +6,8 @@ import {
   Button,
   Text,
   InlineStack,
+  Spinner,
 } from '@shopify/ui-extensions-react/admin';
-import { Spinner } from '@shopify/ui-extensions-react/checkout';
 import { useState, useEffect } from 'react';
 
 // Цільова сторінка для рендерингу блоку
