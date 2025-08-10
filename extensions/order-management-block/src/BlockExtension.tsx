@@ -26,13 +26,13 @@ function App() {
 
   useEffect(() => {
     async function fetchProductInventory() {
-      if (!data.order.lineItems) {
+      if (!data.order.lineItems || data.order.lineItems.length === 0) {
         setIsLoading(false);
         return;
       }
 
       // Формуємо GraphQL запит для отримання інформації про залишки товарів
-      const productVariantIds = data.order.lineItems.map(item => item.variant.id);
+      const productVariantIds = data.order.lineItems.map((item: any) => item.variant.id);
       const res = await query<any>(`
         query GetInventoryLevels($variantIds: [ID!]!) {
           productVariants(ids: $variantIds) {
@@ -50,8 +50,8 @@ function App() {
         }
       `, { variables: { variantIds: productVariantIds } });
 
-      if (res.data) {
-        setProducts(res.data.productVariants.edges.map(edge => edge.node));
+      if (res.data?.productVariants?.edges) {
+        setProducts(res.data.productVariants.edges.map((edge: any) => edge.node));
       }
       setIsLoading(false);
     }
@@ -63,7 +63,7 @@ function App() {
     setIsProcessing(true);
 
     // 1. Додаємо тег до замовлення
-    await query(`
+    const addTagsRes = await query(`
       mutation addTags($id: ID!, $tags: [String!]!) {
         tagsAdd(id: $id, tags: $tags) {
           userErrors {
@@ -74,15 +74,32 @@ function App() {
       }
     `, { variables: { id: orderId, tags: ['Списано зі складу'] } });
 
+    // Якщо були помилки — припиняємо обробку
+    if (addTagsRes?.data?.tagsAdd?.userErrors?.length) {
+      setIsProcessing(false);
+      return;
+    }
 
     // 2. Списуємо товари зі складу
-    const inventoryAdjustments = data.order.lineItems.map(item => ({
-      inventoryItemId: item.variant.inventoryItem.id,
-      availableDelta: -item.quantity, // Від'ємне значення для списання
-    }));
+    const inventoryAdjustments = data.order.lineItems
+      .map((item: any) => {
+        const variant = products.find((p: any) => p.id === item.variant.id);
+        if (!variant?.inventoryItem?.id) {
+          return null;
+        }
+        return {
+          inventoryItemId: variant.inventoryItem.id,
+          availableDelta: -item.quantity,
+        };
+      })
+      .filter(Boolean);
+
+    if (inventoryAdjustments.length === 0) {
+      setIsProcessing(false);
+      return;
+    }
 
     // Отримуємо ID локації. Для простоти беремо першу доступну.
-    // В реальному додатку може знадобитись більш складна логіка вибору локації.
     const locationsRes = await query<any>(`{
         locations(first: 1) {
           edges {
@@ -92,7 +109,12 @@ function App() {
           }
         }
       }`);
-    const locationId = locationsRes.data.locations.edges[0].node.id;
+    const locationId = locationsRes?.data?.locations?.edges?.[0]?.node?.id;
+
+    if (!locationId) {
+      setIsProcessing(false);
+      return;
+    }
 
     await query(`
       mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
@@ -130,7 +152,7 @@ function App() {
     <AdminBlock title="Керування складом">
       <BlockStack>
         <Text fontWeight="bold">Залишки товарів на складі:</Text>
-        {products.map(product => (
+        {products.map((product: any) => (
           <InlineStack key={product.id} blockAlign="center">
             <Text>{product.displayName} - </Text>
             <Text fontWeight="bold">{product.inventoryQuantity} шт.</Text>
