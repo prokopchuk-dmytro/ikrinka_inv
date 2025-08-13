@@ -55,9 +55,8 @@ function App() {
           return;
         }
 
-        // Локація (беремо першу доступну)
-        const locationsRes = await query<any>(`{ locations(first: 1) { edges { node { id } } } }`);
-        const locationId = locationsRes?.data?.locations?.edges?.[0]?.node?.id;
+        // Встановлюємо фіксовану локацію
+        const locationId = 'gid://shopify/Location/86334243083';
 
         // Варіанти з замовлення
         const productVariantIds = data.order.lineItems.map((item: any) => item.variant.id);
@@ -187,13 +186,7 @@ function App() {
         return;
       }
 
-      const locationsRes = await query<any>(`{ locations(first: 1) { edges { node { id } } } }`);
-      const locationId = locationsRes?.data?.locations?.edges?.[0]?.node?.id;
-      if (!locationId) {
-        setErrorMessage('Не знайдено жодної локації для списання.');
-        setIsProcessing(false);
-        return;
-      }
+      const locationId = 'gid://shopify/Location/86334243083';
 
       const adjustRes = await query(`
         mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
