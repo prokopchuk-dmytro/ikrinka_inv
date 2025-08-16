@@ -50,7 +50,7 @@ function App() {
   useEffect(() => {
     async function fetchProductInventory() {
       try {
-        if (!data.order.lineItems || data.order.lineItems.length === 0) {
+        if (!data?.order?.lineItems || data.order.lineItems.length === 0) {
           setIsLoading(false);
           return;
         }
@@ -154,7 +154,7 @@ function App() {
     }
 
     fetchProductInventory();
-  }, [data.order.lineItems, query]);
+  }, [data?.order?.lineItems, query]);
 
   const handleProcessOrder = async () => {
     setIsProcessing(true);
