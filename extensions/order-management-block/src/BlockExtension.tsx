@@ -37,15 +37,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  if (!data?.order) {
-    return (
-      <AdminBlock title="Керування складом">
-        <Spinner />
-      </AdminBlock>
-    );
-  }
-
-  const orderId = data.order.id;
+  const orderId = data?.order?.id;
 
   useEffect(() => {
     async function fetchProductInventory() {
@@ -159,6 +151,12 @@ function App() {
   const handleProcessOrder = async () => {
     setIsProcessing(true);
     setErrorMessage(null);
+
+    if (!orderId) {
+      setErrorMessage('Відсутній ідентифікатор замовлення.');
+      setIsProcessing(false);
+      return;
+    }
 
     try {
       const addTagsRes = await query(`
