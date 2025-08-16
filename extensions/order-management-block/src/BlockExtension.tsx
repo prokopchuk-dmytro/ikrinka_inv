@@ -31,7 +31,7 @@ interface ProductInfo {
 }
 
 function App() {
-  const { data, query } = useApi(TARGET);
+  const { data, query } = useApi();
   const [products, setProducts] = useState<ProductInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
