@@ -51,7 +51,15 @@ function App() {
         const locationId = 'gid://shopify/Location/86334243083';
 
         // Варіанти з замовлення
-        const productVariantIds = data.order.lineItems.map((item: any) => item.variant.id);
+        const productVariantIds = data.order.lineItems
+          .map((item: any) => item?.variant?.id)
+          .filter(Boolean);
+
+        if (productVariantIds.length === 0) {
+          setProducts([]);
+          setIsLoading(false);
+          return;
+        }
 
         // 1) Тягу інформацію про варіанти + метаполе бандлу
         const variantsRes = await query<any>(`
@@ -173,7 +181,9 @@ function App() {
 
       const inventoryAdjustments = (data.order.lineItems as any[])
         .map((item: any) => {
-          const variant = products.find((p: any) => p.id === item.variant.id);
+          const variantId = item?.variant?.id;
+          if (!variantId) return null;
+          const variant = products.find((p: any) => p.id === variantId);
           if (!variant?.inventoryItem?.id) return null;
           return { inventoryItemId: variant.inventoryItem.id, availableDelta: -item.quantity };
         })
