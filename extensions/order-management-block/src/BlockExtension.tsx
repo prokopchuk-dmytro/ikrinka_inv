@@ -42,7 +42,8 @@ function App() {
   useEffect(() => {
     async function fetchProductInventory() {
       try {
-        if (!data?.order?.lineItems || data.order.lineItems.length === 0) {
+        const lineItems = (data?.order?.lineItems as any[] | undefined) || [];
+        if (!lineItems.length) {
           setIsLoading(false);
           return;
         }
@@ -51,15 +52,9 @@ function App() {
         const locationId = 'gid://shopify/Location/86334243083';
 
         // Варіанти з замовлення
-        const productVariantIds = data.order.lineItems
+        const productVariantIds = lineItems
           .map((item: any) => item?.variant?.id)
           .filter(Boolean);
-
-        if (productVariantIds.length === 0) {
-          setProducts([]);
-          setIsLoading(false);
-          return;
-        }
 
         // 1) Тягу інформацію про варіанти + метаполе бандлу
         const variantsRes = await query<any>(`
@@ -82,7 +77,6 @@ function App() {
             displayName: n.displayName,
             inventoryItem: { id: n.inventoryItem?.id },
             inventoryQuantity: n.inventoryItem?.inventoryLevels?.edges?.[0]?.node?.available ?? undefined,
-            // bundleComponents to be filled later if present
           }));
 
         // 2) Збираємо всі компоненти бандлів із метаполя, якщо воно є
