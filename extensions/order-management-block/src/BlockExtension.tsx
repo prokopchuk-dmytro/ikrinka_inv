@@ -47,22 +47,33 @@ function App() {
           return;
         }
 
-        // Встановлюємо фіксовану локацію
-        const locationId = 'gid://shopify/Location/86334243083';
+        // 0) Отримуємо основну (primary) локацію магазину
+        const primaryLocationRes = await query<any>(`
+          query GetPrimaryLocation { shop { primaryLocation { id } } }
+        `);
+        const locationId: string | undefined = primaryLocationRes?.data?.shop?.primaryLocation?.id;
+        if (!locationId) {
+          setErrorMessage('Не вдалося отримати локацію складу. Перевірте скоупи read_locations.');
+          setIsLoading(false);
+          return;
+        }
 
-        // Варіанти з замовлення
+        // 1) Збираємо ID варіантів із замовлення
         const productVariantIds = lineItems
           .map((item: any) => item?.variant?.id)
           .filter(Boolean);
 
-        // 1) Тягу інформацію про варіанти + метаполе бандлу
+        // 2) Тягу інформацію про варіанти + метаполе бандлу
         const variantsRes = await query<any>(`
           query GetVariants($variantIds: [ID!]!, $locationId: ID) {
             nodes(ids: $variantIds) {
               ... on ProductVariant {
                 id
                 displayName
-                inventoryItem { id inventoryLevels(first: 1, locationId: $locationId) { edges { node { available } } } }
+                inventoryItem {
+                  id
+                  inventoryLevels(first: 1, locationId: $locationId) { edges { node { available } } }
+                }
                 metafield(namespace: "bundle", key: "components") { value type }
               }
             }
@@ -78,7 +89,7 @@ function App() {
             inventoryQuantity: n.inventoryItem?.inventoryLevels?.edges?.[0]?.node?.available ?? undefined,
           }));
 
-        // 2) Збираємо всі компоненти бандлів із метаполя, якщо воно є
+        // 3) Збираємо всі компоненти бандлів із метаполя, якщо воно є
         const variantIdToBundleComponents: Record<string, { componentId: string; quantity: number }[]> = {};
         const allComponentIds: string[] = [];
 
@@ -86,7 +97,6 @@ function App() {
           if (!n?.metafield?.value) return;
           try {
             const parsed = JSON.parse(n.metafield.value);
-            // Очікується формат масиву: [{ variantId: string, quantity: number }]
             if (Array.isArray(parsed)) {
               const list = parsed
                 .filter((c: any) => typeof c?.variantId === 'string' && typeof c?.quantity === 'number')
@@ -101,7 +111,7 @@ function App() {
           }
         });
 
-        // 3) Якщо є компоненти — тягнемо їх залишки
+        // 4) Якщо є компоненти — тягнемо їх залишки по тій самій локації
         let componentInfoById: Record<string, { displayName: string; inventoryQuantity: number | undefined }> = {};
         if (allComponentIds.length) {
           const componentsRes = await query<any>(`
@@ -125,7 +135,7 @@ function App() {
           });
         }
 
-        // 4) Збираємо фінальну структуру з компонентами бандлів
+        // 5) Збираємо фінальну структуру з компонентами бандлів
         const withBundles = variantNodes.map((v) => {
           const bundle = variantIdToBundleComponents[v.id];
           if (!bundle) return v;
@@ -160,6 +170,7 @@ function App() {
     }
 
     try {
+      // Додаємо тег до замовлення
       const addTagsRes = await query(`
         mutation addTags($id: ID!, $tags: [String!]!) {
           tagsAdd(id: $id, tags: $tags) { userErrors { field message } }
@@ -172,6 +183,18 @@ function App() {
         return;
       }
 
+      // Отримуємо primary location для списання
+      const primaryLocationRes = await query<any>(`
+        query GetPrimaryLocation { shop { primaryLocation { id } } }
+      `);
+      const locationId: string | undefined = primaryLocationRes?.data?.shop?.primaryLocation?.id;
+      if (!locationId) {
+        setErrorMessage('Не вдалося визначити локацію складу для списання.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Формуємо зміни кількості
       const inventoryAdjustments = (data.order.lineItems as any[])
         .map((item: any) => {
           const variantId = item?.variant?.id;
@@ -187,8 +210,7 @@ function App() {
         return;
       }
 
-      const locationId = 'gid://shopify/Location/86334243083';
-
+      // Виконуємо списання
       const adjustRes = await query(`
         mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
           inventoryAdjustQuantities(input: $input) { userErrors { field message } }
