@@ -6,7 +6,6 @@ import {
   Button,
   Text,
   InlineStack,
-  Spinner,
 } from '@shopify/ui-extensions-react/admin';
 import { useState, useEffect } from 'react';
 
@@ -214,7 +213,7 @@ function App() {
   if (isLoading) {
     return (
       <AdminBlock title="Керування складом">
-        <Spinner />
+        <Text>Завантаження…</Text>
       </AdminBlock>
     );
   }
@@ -245,7 +244,7 @@ function App() {
         ))}
 
         <Button onPress={handleProcessOrder} disabled={isProcessing}>
-          {isProcessing ? <Spinner /> : 'Додати тег та списати зі складу'}
+          {isProcessing ? 'Обробка…' : 'Додати тег та списати зі складу'}
         </Button>
       </BlockStack>
     </AdminBlock>
