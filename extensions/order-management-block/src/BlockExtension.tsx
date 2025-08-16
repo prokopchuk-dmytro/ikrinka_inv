@@ -38,6 +38,18 @@ function App() {
 
   const orderId = data?.order?.id;
 
+  async function reportError(error: unknown, context?: Record<string, any>) {
+    try {
+      await fetch('/api/log', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ error, context }),
+      });
+    } catch {
+      // ignore network errors
+    }
+  }
+
   useEffect(() => {
     async function fetchProductInventory() {
       try {
@@ -55,6 +67,7 @@ function App() {
         if (!locationId) {
           setErrorMessage('Не вдалося отримати локацію складу. Перевірте скоупи read_locations.');
           setIsLoading(false);
+          await reportError('missing_location', { step: 'fetch_primary_location', response: primaryLocationRes });
           return;
         }
 
@@ -135,7 +148,6 @@ function App() {
           });
         }
 
-        // 5) Збираємо фінальну структуру з компонентами бандлів
         const withBundles = variantNodes.map((v) => {
           const bundle = variantIdToBundleComponents[v.id];
           if (!bundle) return v;
@@ -151,6 +163,7 @@ function App() {
         setProducts(withBundles);
       } catch (e: any) {
         setErrorMessage('Не вдалося завантажити дані. Перезавантажте сторінку або перевірте доступи застосунку.');
+        await reportError(e, { step: 'fetch_inventory', orderId });
       } finally {
         setIsLoading(false);
       }
@@ -166,11 +179,11 @@ function App() {
     if (!orderId) {
       setErrorMessage('Відсутній ідентифікатор замовлення.');
       setIsProcessing(false);
+      await reportError('missing_orderId', { step: 'process_order' });
       return;
     }
 
     try {
-      // Додаємо тег до замовлення
       const addTagsRes = await query(`
         mutation addTags($id: ID!, $tags: [String!]!) {
           tagsAdd(id: $id, tags: $tags) { userErrors { field message } }
@@ -180,10 +193,10 @@ function App() {
       if (addTagsRes?.data?.tagsAdd?.userErrors?.length) {
         setErrorMessage('Не вдалося додати тег до замовлення.');
         setIsProcessing(false);
+        await reportError(addTagsRes?.data?.tagsAdd?.userErrors, { step: 'tagsAdd', orderId });
         return;
       }
 
-      // Отримуємо primary location для списання
       const primaryLocationRes = await query<any>(`
         query GetPrimaryLocation { shop { primaryLocation { id } } }
       `);
@@ -191,10 +204,10 @@ function App() {
       if (!locationId) {
         setErrorMessage('Не вдалося визначити локацію складу для списання.');
         setIsProcessing(false);
+        await reportError('missing_location', { step: 'process_order.get_location', primaryLocationRes });
         return;
       }
 
-      // Формуємо зміни кількості
       const inventoryAdjustments = (data.order.lineItems as any[])
         .map((item: any) => {
           const variantId = item?.variant?.id;
@@ -207,10 +220,10 @@ function App() {
 
       if (inventoryAdjustments.length === 0) {
         setIsProcessing(false);
+        await reportError('empty_adjustments', { step: 'process_order.adjustments', orderId });
         return;
       }
 
-      // Виконуємо списання
       const adjustRes = await query(`
         mutation inventoryAdjustQuantities($input: InventoryAdjustQuantitiesInput!) {
           inventoryAdjustQuantities(input: $input) { userErrors { field message } }
@@ -220,6 +233,7 @@ function App() {
       if (adjustRes?.data?.inventoryAdjustQuantities?.userErrors?.length) {
         setErrorMessage('Не вдалося списати товари зі складу.');
         setIsProcessing(false);
+        await reportError(adjustRes?.data?.inventoryAdjustQuantities?.userErrors, { step: 'inventoryAdjustQuantities', orderId, locationId, inventoryAdjustments });
         return;
       }
 
@@ -229,6 +243,7 @@ function App() {
     } catch (e: any) {
       setIsProcessing(false);
       setErrorMessage('Сталася помилка під час обробки замовлення.');
+      await reportError(e, { step: 'process_order.catch', orderId });
     }
   };
 
