@@ -6,8 +6,9 @@ import {
   Button,
   Text,
   InlineStack,
+  TextField,
 } from '@shopify/ui-extensions-react/admin';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 // Цільова сторінка для рендерингу блоку
 const TARGET = 'admin.order-details.block.render';
@@ -35,6 +36,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [showAll, setShowAll] = useState(false);
 
   const orderId = data?.order?.id;
 
@@ -49,6 +52,16 @@ function App() {
       // ignore network errors
     }
   }
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredProducts = useMemo(() => {
+    if (!normalizedSearch) return products;
+    return products.filter((p) => p.displayName.toLowerCase().includes(normalizedSearch));
+  }, [products, normalizedSearch]);
+
+  const MAX_VISIBLE = 10;
+  const visibleProducts = showAll ? filteredProducts : filteredProducts.slice(0, MAX_VISIBLE);
+  const canShowMore = filteredProducts.length > MAX_VISIBLE;
 
   useEffect(() => {
     async function fetchProductInventory() {
@@ -259,26 +272,45 @@ function App() {
     <AdminBlock title="Керування складом">
       <BlockStack>
         {errorMessage ? <Text>{errorMessage}</Text> : null}
-        <Text>Залишки товарів на складі:</Text>
-        {products.map((product) => (
-          <BlockStack key={product.id}>
-            <InlineStack>
-              <Text>{product.displayName} - </Text>
-              <Text>{product.inventoryQuantity ?? '—'} шт.</Text>
-            </InlineStack>
-            {product.bundleComponents && product.bundleComponents.length > 0 ? (
-              <BlockStack>
-                <Text>Склад бандлу:</Text>
-                {product.bundleComponents.map((comp) => (
-                  <InlineStack key={comp.id}>
-                    <Text>• {comp.displayName} × {comp.quantityPerBundle} — </Text>
-                    <Text>{comp.inventoryQuantity ?? '—'} шт. на складі</Text>
-                  </InlineStack>
-                ))}
-              </BlockStack>
-            ) : null}
-          </BlockStack>
-        ))}
+
+        <TextField
+          label="Пошук товарів"
+          value={search}
+          onChange={setSearch}
+          placeholder="Назва товару або варіанта"
+        />
+
+        <Text>
+          Знайдено: {filteredProducts.length} / В замовленні: {products.length}
+        </Text>
+
+        <BlockStack>
+          {visibleProducts.map((product) => (
+            <BlockStack key={product.id}>
+              <InlineStack>
+                <Text>{product.displayName} - </Text>
+                <Text>{product.inventoryQuantity ?? '—'} шт.</Text>
+              </InlineStack>
+              {product.bundleComponents && product.bundleComponents.length > 0 ? (
+                <BlockStack>
+                  <Text>Склад бандлу:</Text>
+                  {product.bundleComponents.map((comp) => (
+                    <InlineStack key={comp.id}>
+                      <Text>• {comp.displayName} × {comp.quantityPerBundle} — </Text>
+                      <Text>{comp.inventoryQuantity ?? '—'} шт. на складі</Text>
+                    </InlineStack>
+                  ))}
+                </BlockStack>
+              ) : null}
+            </BlockStack>
+          ))}
+        </BlockStack>
+
+        {canShowMore ? (
+          <Button onPress={() => setShowAll((v) => !v)}>
+            {showAll ? 'Показати менше' : `Показати ще (${filteredProducts.length - MAX_VISIBLE})`}
+          </Button>
+        ) : null}
 
         <Button onPress={handleProcessOrder} disabled={isProcessing}>
           {isProcessing ? 'Обробка…' : 'Додати тег та списати зі складу'}
